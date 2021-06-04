@@ -178,10 +178,11 @@ config.toml
 Bookmarks
 Login Data
 Cookies
-hack-browser-data
+cmd/hack-browser-data/hack-browser-data
 History
 *.db
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+main.go
 
