@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"hack-browser-data/core/decrypt"
-	"hack-browser-data/utils"
+	"github.com/moond4rk/hack-browser-data/core/decrypt"
+	"github.com/moond4rk/hack-browser-data/utils"
 
 	"github.com/tidwall/gjson"
 )

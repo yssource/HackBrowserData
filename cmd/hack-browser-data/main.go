@@ -1,11 +1,12 @@
-package cmd
+package main
 
 import (
-	"hack-browser-data/core"
-	"hack-browser-data/log"
-	"hack-browser-data/utils"
 	"os"
 	"strings"
+
+	"github.com/moond4rk/hack-browser-data/core"
+	"github.com/moond4rk/hack-browser-data/log"
+	"github.com/moond4rk/hack-browser-data/utils"
 
 	"github.com/urfave/cli/v2"
 )

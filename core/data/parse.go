@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"hack-browser-data/core/decrypt"
-	"hack-browser-data/log"
-	"hack-browser-data/utils"
+	"github.com/moond4rk/hack-browser-data/core/decrypt"
+	"github.com/moond4rk/hack-browser-data/log"
+	"github.com/moond4rk/hack-browser-data/utils"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/tidwall/gjson"

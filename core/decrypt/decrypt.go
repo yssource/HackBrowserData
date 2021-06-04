@@ -10,7 +10,7 @@ import (
 	"encoding/asn1"
 	"errors"
 
-	"hack-browser-data/log"
+	"github.com/moond4rk/hack-browser-data/log"
 
 	"golang.org/x/crypto/pbkdf2"
 )

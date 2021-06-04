@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"hack-browser-data/log"
+	"github.com/moond4rk/hack-browser-data/log"
 )
 
 const Prefix = "[x]: "
