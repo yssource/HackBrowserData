@@ -21,6 +21,10 @@ var (
 	customKeyPath     string
 )
 
+func main() {
+	Execute()
+}
+
 func Execute() {
 	app := &cli.App{
 		Name:  "hack-browser-data",
