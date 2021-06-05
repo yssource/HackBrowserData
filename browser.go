@@ -119,8 +119,10 @@ func (b gecko) Name() string {
 	}
 }
 
+// GetBrowsingData 拼接 itemer 的文件名称，
 func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
-	p, err := getAbsPath(b.ProfilePath(), itemer.FileName())
+	var masterKey []byte
+	p, err := getAbsPath(b.ProfilePath(), itemer.FileName(b))
 	if err != nil {
 		return nil, err
 	}
@@ -128,16 +130,19 @@ func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 	if err != nil {
 		return nil, err
 	}
-	masterKey, err := b.MasterSecretKey()
-	if err != nil {
-		return nil, err
+	// TODO: store MasterSecretKey, not call function each time
+	if itemer == Password || itemer == Cookie || itemer == CreditCard {
+		masterKey, err = b.MasterSecretKey()
+		if err != nil {
+			return nil, err
+		}
 	}
-	data := itemer.Data()
+	data := itemer.Data(b)
 	err = data.parse(itemer, masterKey)
 	if err != nil {
 		return nil, err
 	}
-	err = os.Remove(itemer.FileName())
+	err = os.Remove(itemer.FileName(b))
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +150,7 @@ func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 }
 
 func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
-	p, err := getAbsPath(b.ProfilePath(), itemer.FileName())
+	p, err := getAbsPath(b.ProfilePath(), itemer.FileName(b))
 	if err != nil {
 		return nil, err
 	}
@@ -157,12 +162,12 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 	if err != nil {
 		return nil, err
 	}
-	data := itemer.Data()
+	data := itemer.Data(b)
 	err = data.parse(itemer, masterKey)
 	if err != nil {
 		return nil, err
 	}
-	err = os.Remove(itemer.FileName())
+	err = os.Remove(itemer.FileName(b))
 	if err != nil {
 		return nil, err
 	}
