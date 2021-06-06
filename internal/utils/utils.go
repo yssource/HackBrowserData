@@ -9,8 +9,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"github.com/moond4rk/hack-browser-data/log"
 )
 
 const Prefix = "[x]: "
@@ -82,7 +80,7 @@ func MakeDir(dirName string) error {
 func Compress(exportDir string) error {
 	files, err := ioutil.ReadDir(exportDir)
 	if err != nil {
-		log.Error(err)
+		return err
 	}
 	var b = new(bytes.Buffer)
 	zw := zip.NewWriter(b)
@@ -101,7 +99,7 @@ func Compress(exportDir string) error {
 		}
 		err = os.Remove(fileName)
 		if err != nil {
-			log.Error(err)
+			return err
 		}
 	}
 	if err := zw.Close(); err != nil {
