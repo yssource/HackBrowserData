@@ -52,7 +52,7 @@ func (b webkit) ProfilePath() string {
 func (b gecko) ProfilePath() string {
 	switch b {
 	case Firefox:
-		return rootProfile + "/AppData/Roaming/Mozilla/Firefox/Profiles/*.default-release*/"
+		return rootProfile + "/AppData/Roaming/Mozilla/Firefox/Profiles/*.default*/"
 	case FirefoxBeta:
 		return rootProfile + "/AppData/Roaming/Mozilla/Firefox/Profiles/*.default-beta*/"
 	case FirefoxDev:

@@ -17,14 +17,6 @@ type Itemer interface {
 	Data(browser Browser) BrowsingData
 }
 
-func GetItemer(browser Browser) Itemer {
-	// switch browser {
-	// case browser.(webkit):
-	// case browser.(gecko):
-	// }
-	return nil
-}
-
 const unsupportedItem = "Unsupported Item"
 
 func (i item) Name() string {
@@ -86,6 +78,8 @@ func (i item) FileName(browser Browser) string {
 			return firefoxCookieFile
 		case History:
 			return firefoxDataFile
+		case Download:
+			return firefoxDataFile
 		default:
 			return unsupportedItem
 		}
@@ -113,6 +107,18 @@ func (i item) Data(browser Browser) BrowsingData {
 			return &WebkitDownload{}
 		}
 	case gecko:
+		switch i {
+		case Password:
+			return &GeckoPassword{}
+		case Cookie:
+			return &GeckoCookie{}
+		case Bookmark:
+			return &GeckoBookmark{}
+		case History:
+			return &GeckoHistory{}
+		case Download:
+			return &GeckoDownload{}
+		}
 	}
 	return nil
 }

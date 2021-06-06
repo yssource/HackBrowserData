@@ -7,7 +7,39 @@ import (
 )
 
 func main() {
-	ChromePassword()
+	FirefoxPassword()
+}
+
+func FirefoxPassword() {
+	b, err := hbd.NewBrowser(hbd.Firefox)
+	if err != nil {
+		panic(err)
+	}
+	password, err := b.GetBrowsingData(hbd.Password)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(password.(*hbd.GeckoPassword))
+	bookmark, err := b.GetBrowsingData(hbd.Bookmark)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bookmark.(*hbd.GeckoBookmark))
+	history, err := b.GetBrowsingData(hbd.History)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(history.(*hbd.GeckoHistory))
+	cookie, err := b.GetBrowsingData(hbd.Cookie)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(cookie.(*hbd.GeckoCookie))
+	download, err := b.GetBrowsingData(hbd.Download)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(download.(*hbd.GeckoDownload))
 }
 
 func ChromePassword() {
@@ -15,27 +47,27 @@ func ChromePassword() {
 	if err != nil {
 		panic(err)
 	}
-	// password, err := b.GetBrowsingData(hbd.Password)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(password.(*hbd.WebkitPassword))
-	// bookmark, err := b.GetBrowsingData(hbd.Bookmark)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(bookmark.(*hbd.WebkitBookmark))
-	// history, err := b.GetBrowsingData(hbd.History)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(history.(*hbd.WebkitHistory))
-	//
-	// creditCard, err := b.GetBrowsingData(hbd.CreditCard)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(creditCard.(*hbd.WebkitCreditCard))
+	password, err := b.GetBrowsingData(hbd.Password)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(password.(*hbd.WebkitPassword))
+	bookmark, err := b.GetBrowsingData(hbd.Bookmark)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(bookmark.(*hbd.WebkitBookmark))
+	history, err := b.GetBrowsingData(hbd.History)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(history.(*hbd.WebkitHistory))
+
+	creditCard, err := b.GetBrowsingData(hbd.CreditCard)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(creditCard.(*hbd.WebkitCreditCard))
 
 	download, err := b.GetBrowsingData(hbd.Download)
 	if err != nil {

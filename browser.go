@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Browser interface {
@@ -121,21 +122,20 @@ func (b gecko) Name() string {
 
 // GetBrowsingData 拼接 itemer 的文件名称，
 func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
-	var masterKey []byte
-	p, err := getAbsPath(b.ProfilePath(), itemer.FileName(b))
-	if err != nil {
-		return nil, err
-	}
-	err = copyToLocal(p, filepath.Base(p))
-	if err != nil {
-		return nil, err
-	}
+	var (
+		masterKey []byte
+		err       error
+	)
 	// TODO: store MasterSecretKey, not call function each time
 	if itemer == Password || itemer == Cookie || itemer == CreditCard {
 		masterKey, err = b.MasterSecretKey()
 		if err != nil {
 			return nil, err
 		}
+	}
+	err = copyFileToLocal(b.ProfilePath(), itemer.FileName(Chrome))
+	if err != nil {
+		return nil, err
 	}
 	data := itemer.Data(b)
 	err = data.parse(itemer, masterKey)
@@ -150,28 +150,45 @@ func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 }
 
 func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
-	p, err := getAbsPath(b.ProfilePath(), itemer.FileName(b))
-	if err != nil {
-		return nil, err
+	var (
+		masterKey []byte
+		err       error
+	)
+	// firefox password need key4.db
+	if itemer == Password {
+		paths := strings.Split(itemer.FileName(b), "|")
+		if err := copyFileToLocal(b.ProfilePath(), paths[0]); err != nil {
+			fmt.Println(err)
+		}
+		if err := copyFileToLocal(b.ProfilePath(), paths[1]); err != nil {
+			fmt.Println(err)
+		}
+		data := itemer.Data(b)
+		err = data.parse(itemer, masterKey)
+		err = os.Remove(paths[0])
+		if err != nil {
+			return nil, err
+		}
+		err = os.Remove(paths[1])
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	} else {
+		if err := copyFileToLocal(b.ProfilePath(), itemer.FileName(b)); err != nil {
+
+		}
+		data := itemer.Data(b)
+		err = data.parse(itemer, masterKey)
+		if err != nil {
+			return nil, err
+		}
+		err = os.Remove(itemer.FileName(b))
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
 	}
-	err = copyToLocal(p, filepath.Base(p))
-	if err != nil {
-		return nil, err
-	}
-	masterKey, err := b.MasterSecretKey()
-	if err != nil {
-		return nil, err
-	}
-	data := itemer.Data(b)
-	err = data.parse(itemer, masterKey)
-	if err != nil {
-		return nil, err
-	}
-	err = os.Remove(itemer.FileName(b))
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
 }
 
 var (
@@ -190,24 +207,34 @@ func getAbsPath(profilePath, file string) (string, error) {
 	return "", fmt.Errorf("find %s failed", file)
 }
 
-// copyToLocal 用来将文件拷贝到当前目录
-func copyToLocal(src, dst string) error {
-	locals, _ := filepath.Glob("*")
-	for _, v := range locals {
-		if v == dst {
-			err := os.Remove(dst)
-			if err != nil {
-				return err
+// copyToLocal copy file to local path
+func copyFileToLocal(profilePath, filename string) error {
+	p, err := filepath.Glob(filepath.Join(profilePath, filename))
+	if err != nil {
+		return err
+	}
+	// TODO, handle error if file not exist
+	if len(p) <= 0 {
+		return fmt.Errorf("find %s failed", filename)
+	} else {
+		src := p[0]
+		locals, _ := filepath.Glob("*")
+		for _, v := range locals {
+			if v == filename {
+				err := os.Remove(filename)
+				if err != nil {
+					return err
+				}
 			}
 		}
-	}
-	sourceFile, err := ioutil.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(dst, sourceFile, 0777)
-	if err != nil {
-		return err
+		sourceFile, err := ioutil.ReadFile(src)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(filename, sourceFile, 0777)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

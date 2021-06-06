@@ -1,9 +1,13 @@
 package hackbrowserdata
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -298,128 +302,285 @@ func (wd *WebkitDownload) parse(itemer Itemer, masterKey []byte) error {
 
 type GeckoPassword []loginData
 
-// func (g *GeckoPassword) parse(itemer Itemer, masterKey []byte) error {
-// 	globalSalt, metaBytes, nssA11, nssA102, err := getFirefoxDecryptKey()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	keyLin := []byte{248, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
-// 	metaPBE, err := decrypt.NewASN1PBE(metaBytes)
-// 	if err != nil {
-// 		log.Error("decrypt meta data failed", err)
-// 		return err
-// 	}
-// 	// default master password is empty
-// 	var masterPwd []byte
-// 	k, err := metaPBE.Decrypt(globalSalt, masterPwd)
-// 	if err != nil {
-// 		log.Error("decrypt firefox meta bytes failed", err)
-// 		return err
-// 	}
-// 	if bytes.Contains(k, []byte("password-check")) {
-// 		log.Debug("password-check success")
-// 		m := bytes.Compare(nssA102, keyLin)
-// 		if m == 0 {
-// 			nssPBE, err := decrypt.NewASN1PBE(nssA11)
-// 			if err != nil {
-// 				log.Error("decode firefox nssA11 bytes failed", err)
-// 				return err
-// 			}
-// 			finallyKey, err := nssPBE.Decrypt(globalSalt, masterPwd)
-// 			finallyKey = finallyKey[:24]
-// 			if err != nil {
-// 				log.Error("get firefox finally key failed")
-// 				return err
-// 			}
-// 			allLogins, err := getFirefoxLoginData()
-// 			if err != nil {
-// 				return err
-// 			}
-// 			for _, v := range allLogins {
-// 				userPBE, err := decrypt.NewASN1PBE(v.encryptUser)
-// 				if err != nil {
-// 					log.Error("decode firefox user bytes failed", err)
-// 				}
-// 				pwdPBE, err := decrypt.NewASN1PBE(v.encryptPass)
-// 				if err != nil {
-// 					log.Error("decode firefox password bytes failed", err)
-// 				}
-// 				user, err := userPBE.Decrypt(finallyKey, masterPwd)
-// 				if err != nil {
-// 					log.Error(err)
-// 				}
-// 				pwd, err := pwdPBE.Decrypt(finallyKey, masterPwd)
-// 				if err != nil {
-// 					log.Error(err)
-// 				}
-// 				log.Debug("decrypt firefox success")
-// 				p.logins = append(p.logins, loginData{
-// 					LoginUrl:   v.LoginUrl,
-// 					UserName:   string(decrypt.PKCS5UnPadding(user)),
-// 					Password:   string(decrypt.PKCS5UnPadding(pwd)),
-// 					CreateDate: v.CreateDate,
-// 				})
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
+func (g *GeckoPassword) parse(itemer Itemer, masterKey []byte) error {
+	p := strings.Split(itemer.FileName(Firefox), "|")
+	loginsjson, key4db := p[0], p[1]
+	globalSalt, metaBytes, nssA11, nssA102, err := getFirefoxDecryptKey(key4db)
+	if err != nil {
+		return err
+	}
+	keyLin := []byte{248, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	metaPBE, err := decrypt.NewASN1PBE(metaBytes)
+	if err != nil {
+		return err
+	}
+	// default master password is empty
+	// TODO: use master password
+	var masterPwd []byte
+	k, err := metaPBE.Decrypt(globalSalt, masterPwd)
+	if err != nil {
+		return err
+	}
+	if bytes.Contains(k, []byte("password-check")) {
+		m := bytes.Compare(nssA102, keyLin)
+		if m == 0 {
+			nssPBE, err := decrypt.NewASN1PBE(nssA11)
+			if err != nil {
+				return err
+			}
+			finallyKey, err := nssPBE.Decrypt(globalSalt, masterPwd)
+			finallyKey = finallyKey[:24]
+			if err != nil {
+				return err
+			}
+			allLogin, err := getFirefoxLoginData(loginsjson)
+			if err != nil {
+				return err
+			}
+			for _, v := range allLogin {
+				userPBE, err := decrypt.NewASN1PBE(v.encryptUser)
+				if err != nil {
+					return err
+				}
+				pwdPBE, err := decrypt.NewASN1PBE(v.encryptPass)
+				if err != nil {
+					return err
+				}
+				user, err := userPBE.Decrypt(finallyKey, masterPwd)
+				if err != nil {
+					return err
+				}
+				pwd, err := pwdPBE.Decrypt(finallyKey, masterPwd)
+				if err != nil {
+					return err
+				}
+				*g = append(*g, loginData{
+					LoginUrl:   v.LoginUrl,
+					UserName:   string(decrypt.PKCS5UnPadding(user)),
+					Password:   string(decrypt.PKCS5UnPadding(pwd)),
+					CreateDate: v.CreateDate,
+				})
+			}
+		}
+	}
+	return nil
+}
 
-// func getFirefoxDecryptKey() (item1, item2, a11, a102 []byte, err error) {
-// 	var (
-// 		keyDB   *sql.DB
-// 		pwdRows *sql.Rows
-// 		nssRows *sql.Rows
-// 	)
-// 	keyDB, err = sql.Open("sqlite3", FirefoxKey4File)
-// 	if err != nil {
-// 		log.Error(err)
-// 		return nil, nil, nil, nil, err
-// 	}
-// 	defer func() {
-// 		if err := keyDB.Close(); err != nil {
-// 			log.Error(err)
-// 		}
-// 	}()
-//
-// 	pwdRows, err = keyDB.Query(queryMetaData)
-// 	defer func() {
-// 		if err := pwdRows.Close(); err != nil {
-// 			log.Debug(err)
-// 		}
-// 	}()
-// 	for pwdRows.Next() {
-// 		if err := pwdRows.Scan(&item1, &item2); err != nil {
-// 			log.Error(err)
-// 			continue
-// 		}
-// 	}
-// 	if err != nil {
-// 		log.Error(err)
-// 	}
-// 	nssRows, err = keyDB.Query(queryNssPrivate)
-// 	defer func() {
-// 		if err := nssRows.Close(); err != nil {
-// 			log.Debug(err)
-// 		}
-// 	}()
-// 	for nssRows.Next() {
-// 		if err := nssRows.Scan(&a11, &a102); err != nil {
-// 			log.Debug(err)
-// 		}
-// 	}
-// 	return item1, item2, a11, a102, nil
-// }
+func getFirefoxDecryptKey(key4file string) (item1, item2, a11, a102 []byte, err error) {
+	var (
+		keyDB *sql.DB
+	)
+	keyDB, err = sql.Open("sqlite3", key4file)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	defer keyDB.Close()
 
-type GeckoCookie map[string][]cookie
+	if err = keyDB.QueryRow(queryMetaData).Scan(&item1, &item2); err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	if err = keyDB.QueryRow(queryNssPrivate).Scan(&a11, &a102); err != nil {
+		return nil, nil, nil, nil, err
+	}
+	return item1, item2, a11, a102, nil
+}
+
+func getFirefoxLoginData(loginsjson string) (l []loginData, err error) {
+	s, err := ioutil.ReadFile(loginsjson)
+	if err != nil {
+		return nil, err
+	}
+	h := gjson.GetBytes(s, "logins")
+	if h.Exists() {
+		for _, v := range h.Array() {
+			var (
+				m    loginData
+				user []byte
+				pass []byte
+			)
+			m.LoginUrl = v.Get("formSubmitURL").String()
+			user, err = base64.StdEncoding.DecodeString(v.Get("encryptedUsername").String())
+			if err != nil {
+				return nil, err
+			}
+			pass, err = base64.StdEncoding.DecodeString(v.Get("encryptedPassword").String())
+			if err != nil {
+				return nil, err
+			}
+			m.encryptUser = user
+			m.encryptPass = pass
+			m.CreateDate = utils.TimeStampFormat(v.Get("timeCreated").Int() / 1000)
+			l = append(l, m)
+		}
+	}
+	return l, nil
+}
+
+type GeckoCookie []cookie
+
+func (g *GeckoCookie) parse(itemer Itemer, masterKey []byte) error {
+	cookieDB, err := sql.Open("sqlite3", itemer.FileName(Firefox))
+	if err != nil {
+		return err
+	}
+	defer cookieDB.Close()
+	rows, err := cookieDB.Query(queryFirefoxCookie)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			name, value, host, path string
+			isSecure, isHttpOnly    int
+			creationTime, expiry    int64
+		)
+		if err = rows.Scan(&name, &value, &host, &path, &creationTime, &expiry, &isSecure, &isHttpOnly); err != nil {
+			fmt.Println(err)
+		}
+		*g = append(*g, cookie{
+			KeyName:    name,
+			Host:       host,
+			Path:       path,
+			IsSecure:   utils.IntToBool(isSecure),
+			IsHTTPOnly: utils.IntToBool(isHttpOnly),
+			CreateDate: utils.TimeStampFormat(creationTime / 1000000),
+			ExpireDate: utils.TimeStampFormat(expiry),
+			Value:      value,
+		})
+	}
+	return nil
+}
 
 type GeckoBookmark []bookmark
 
+func (g *GeckoBookmark) parse(itemer Itemer, masterKey []byte) error {
+	var (
+		err          error
+		keyDB        *sql.DB
+		bookmarkRows *sql.Rows
+		bookmarkUrl  string
+	)
+	keyDB, err = sql.Open("sqlite3", itemer.FileName(Firefox))
+	if err != nil {
+		return err
+	}
+	_, err = keyDB.Exec(closeJournalMode)
+	defer keyDB.Close()
+
+	bookmarkRows, err = keyDB.Query(queryFirefoxBookMarks)
+	if err != nil {
+		return err
+	}
+	defer bookmarkRows.Close()
+	for bookmarkRows.Next() {
+		var (
+			id, fk, bType, dateAdded int64
+			title                    string
+		)
+		if err = bookmarkRows.Scan(&id, &fk, &bType, &dateAdded, &title); err != nil {
+			return err
+		}
+		*g = append(*g, bookmark{
+			ID:        id,
+			Name:      title,
+			Type:      utils.BookMarkType(bType),
+			URL:       bookmarkUrl,
+			DateAdded: utils.TimeStampFormat(dateAdded / 1000000),
+		})
+	}
+	return nil
+}
+
 type GeckoHistory []history
 
-type GeckoCard []card
+func (g *GeckoHistory) parse(itemer Itemer, masterKey []byte) error {
+	var (
+		err         error
+		keyDB       *sql.DB
+		historyRows *sql.Rows
+	)
+	keyDB, err = sql.Open("sqlite3", itemer.FileName(Firefox))
+	if err != nil {
+		return err
+	}
+	_, err = keyDB.Exec(closeJournalMode)
+	if err != nil {
+		return err
+	}
+	defer keyDB.Close()
+	historyRows, err = keyDB.Query(queryFirefoxHistory)
+	if err != nil {
+		return err
+	}
+	defer historyRows.Close()
+	for historyRows.Next() {
+		var (
+			id, visitDate int64
+			url, title    string
+			visitCount    int
+		)
+		if err = historyRows.Scan(&id, &url, &visitDate, &title, &visitCount); err != nil {
+			fmt.Println(err)
+		}
+		*g = append(*g, history{
+			Title:         title,
+			Url:           url,
+			VisitCount:    visitCount,
+			LastVisitTime: utils.TimeStampFormat(visitDate / 1000000),
+		})
+	}
+	return nil
+}
 
 type GeckoDownload []download
+
+func (g *GeckoDownload) parse(itemer Itemer, masterKey []byte) error {
+	var (
+		err          error
+		keyDB        *sql.DB
+		downloadRows *sql.Rows
+	)
+	keyDB, err = sql.Open("sqlite3", itemer.FileName(Firefox))
+	if err != nil {
+		return err
+	}
+	_, err = keyDB.Exec(closeJournalMode)
+	if err != nil {
+		return err
+	}
+	defer keyDB.Close()
+	downloadRows, err = keyDB.Query(queryFirefoxDownload)
+	if err != nil {
+		return err
+	}
+	defer downloadRows.Close()
+	for downloadRows.Next() {
+		var (
+			content, url       string
+			placeID, dateAdded int64
+		)
+		if err = downloadRows.Scan(&placeID, &content, &url, &dateAdded); err != nil {
+			fmt.Println(err)
+		}
+		contentList := strings.Split(content, ",{")
+		if len(contentList) > 1 {
+			path := contentList[0]
+			json := "{" + contentList[1]
+			endTime := gjson.Get(json, "endTime")
+			fileSize := gjson.Get(json, "fileSize")
+			*g = append(*g, download{
+				TargetPath: path,
+				Url:        url,
+				TotalBytes: fileSize.Int(),
+				StartTime:  utils.TimeStampFormat(dateAdded / 1000000),
+				EndTime:    utils.TimeStampFormat(endTime.Int() / 1000),
+			})
+		}
+	}
+	return nil
+}
 
 type (
 	loginData struct {
