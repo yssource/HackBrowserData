@@ -7,9 +7,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/moond4rk/hack-browser-data/utils"
-
 	"github.com/jszwec/csvutil"
+
+	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 )
 
 func (b *bookmarks) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "bookmark", "json")
+	filename := utils2.FormatFileName(dir, browser, "bookmark", "json")
 	sort.Slice(b.bookmarks, func(i, j int) bool {
 		return b.bookmarks[i].ID < b.bookmarks[j].ID
 	})
@@ -25,12 +25,12 @@ func (b *bookmarks) outPutJson(browser, dir string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d bookmarks, filename is %s \n", utils.Prefix, len(b.bookmarks), filename)
+	fmt.Printf("%s Get %d bookmarks, filename is %s \n", utils2.Prefix, len(b.bookmarks), filename)
 	return nil
 }
 
 func (h *historyData) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "history", "json")
+	filename := utils2.FormatFileName(dir, browser, "history", "json")
 	sort.Slice(h.history, func(i, j int) bool {
 		return h.history[i].VisitCount > h.history[j].VisitCount
 	})
@@ -38,47 +38,47 @@ func (h *historyData) outPutJson(browser, dir string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d history, filename is %s \n", utils.Prefix, len(h.history), filename)
+	fmt.Printf("%s Get %d history, filename is %s \n", utils2.Prefix, len(h.history), filename)
 	return nil
 }
 
 func (d *downloads) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "download", "json")
+	filename := utils2.FormatFileName(dir, browser, "download", "json")
 	err := writeToJson(filename, d.downloads)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d history, filename is %s \n", utils.Prefix, len(d.downloads), filename)
+	fmt.Printf("%s Get %d history, filename is %s \n", utils2.Prefix, len(d.downloads), filename)
 	return nil
 }
 
 func (p *passwords) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "password", "json")
+	filename := utils2.FormatFileName(dir, browser, "password", "json")
 	err := writeToJson(filename, p.logins)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d passwords, filename is %s \n", utils.Prefix, len(p.logins), filename)
+	fmt.Printf("%s Get %d passwords, filename is %s \n", utils2.Prefix, len(p.logins), filename)
 	return nil
 }
 
 func (c *cookies) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "cookie", "json")
+	filename := utils2.FormatFileName(dir, browser, "cookie", "json")
 	err := writeToJson(filename, c.cookies)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d cookies, filename is %s \n", utils.Prefix, len(c.cookies), filename)
+	fmt.Printf("%s Get %d cookies, filename is %s \n", utils2.Prefix, len(c.cookies), filename)
 	return nil
 }
 
 func (c *creditCards) outPutJson(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "credit", "json")
+	filename := utils2.FormatFileName(dir, browser, "credit", "json")
 	err := writeToJson(filename, c.cards)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d credit cards, filename is %s \n", utils.Prefix, len(c.cards), filename)
+	fmt.Printf("%s Get %d credit cards, filename is %s \n", utils2.Prefix, len(c.cards), filename)
 	return nil
 }
 
@@ -104,43 +104,43 @@ func writeToJson(filename string, data interface{}) error {
 }
 
 func (b *bookmarks) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "bookmark", "csv")
+	filename := utils2.FormatFileName(dir, browser, "bookmark", "csv")
 	if err := writeToCsv(filename, b.bookmarks); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d bookmarks, filename is %s \n", utils.Prefix, len(b.bookmarks), filename)
+	fmt.Printf("%s Get %d bookmarks, filename is %s \n", utils2.Prefix, len(b.bookmarks), filename)
 	return nil
 }
 
 func (h *historyData) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "history", "csv")
+	filename := utils2.FormatFileName(dir, browser, "history", "csv")
 	if err := writeToCsv(filename, h.history); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d history, filename is %s \n", utils.Prefix, len(h.history), filename)
+	fmt.Printf("%s Get %d history, filename is %s \n", utils2.Prefix, len(h.history), filename)
 	return nil
 }
 
 func (d *downloads) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "download", "csv")
+	filename := utils2.FormatFileName(dir, browser, "download", "csv")
 	if err := writeToCsv(filename, d.downloads); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d download history, filename is %s \n", utils.Prefix, len(d.downloads), filename)
+	fmt.Printf("%s Get %d download history, filename is %s \n", utils2.Prefix, len(d.downloads), filename)
 	return nil
 }
 
 func (p *passwords) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "password", "csv")
+	filename := utils2.FormatFileName(dir, browser, "password", "csv")
 	if err := writeToCsv(filename, p.logins); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d passwords, filename is %s \n", utils.Prefix, len(p.logins), filename)
+	fmt.Printf("%s Get %d passwords, filename is %s \n", utils2.Prefix, len(p.logins), filename)
 	return nil
 }
 
 func (c *cookies) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "cookie", "csv")
+	filename := utils2.FormatFileName(dir, browser, "cookie", "csv")
 	var tempSlice []cookie
 	for _, v := range c.cookies {
 		tempSlice = append(tempSlice, v...)
@@ -148,12 +148,12 @@ func (c *cookies) outPutCsv(browser, dir string) error {
 	if err := writeToCsv(filename, tempSlice); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d cookies, filename is %s \n", utils.Prefix, len(c.cookies), filename)
+	fmt.Printf("%s Get %d cookies, filename is %s \n", utils2.Prefix, len(c.cookies), filename)
 	return nil
 }
 
 func (c *creditCards) outPutCsv(browser, dir string) error {
-	filename := utils.FormatFileName(dir, browser, "credit", "csv")
+	filename := utils2.FormatFileName(dir, browser, "credit", "csv")
 	var tempSlice []card
 	for _, v := range c.cards {
 		tempSlice = append(tempSlice, v...)
@@ -161,7 +161,7 @@ func (c *creditCards) outPutCsv(browser, dir string) error {
 	if err := writeToCsv(filename, tempSlice); err != nil {
 		return err
 	}
-	fmt.Printf("%s Get %d credit cards, filename is %s \n", utils.Prefix, len(c.cards), filename)
+	fmt.Printf("%s Get %d credit cards, filename is %s \n", utils2.Prefix, len(c.cards), filename)
 	return nil
 }
 

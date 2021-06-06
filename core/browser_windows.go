@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/moond4rk/hack-browser-data/core/decrypt"
-	"github.com/moond4rk/hack-browser-data/utils"
-
 	"github.com/tidwall/gjson"
+
+	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 const (
@@ -145,7 +145,7 @@ func (c *Chromium) InitSecretKey() error {
 	if _, err := os.Stat(c.keyPath); os.IsNotExist(err) {
 		return fmt.Errorf("%s secret key path is empty", c.name)
 	}
-	keyFile, err := utils.ReadFile(c.keyPath)
+	keyFile, err := utils2.ReadFile(c.keyPath)
 	if err != nil {
 		return err
 	}

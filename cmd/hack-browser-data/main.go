@@ -4,11 +4,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/moond4rk/hack-browser-data/core"
-	"github.com/moond4rk/hack-browser-data/log"
-	"github.com/moond4rk/hack-browser-data/utils"
-
 	"github.com/urfave/cli/v2"
+
+	"github.com/moond4rk/hack-browser-data/core"
+	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 var (
@@ -63,7 +62,7 @@ func Execute() {
 					log.Error(err)
 				}
 			}
-			err = utils.MakeDir(exportDir)
+			err = utils2.MakeDir(exportDir)
 			if err != nil {
 				log.Error(err)
 			}
@@ -108,7 +107,7 @@ func Execute() {
 				}
 			}
 			if compress {
-				err = utils.Compress(exportDir)
+				err = utils2.Compress(exportDir)
 				if err != nil {
 					log.Error(err)
 				}

@@ -1,13 +1,14 @@
 package hackbrowserdata
 
 import (
-	"bytes"
-	"crypto/sha1"
-	"errors"
+	"encoding/base64"
+	"fmt"
 	"os"
-	"os/exec"
 
-	"golang.org/x/crypto/pbkdf2"
+	"github.com/tidwall/gjson"
+
+	"github.com/moond4rk/hack-browser-data/internal/decrypt"
+	"github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 // Storage use for implement BrowserClient interface
@@ -94,36 +95,29 @@ func (b gecko) KeyFilePath() string {
 }
 
 func (b webkit) MasterSecretKey() ([]byte, error) {
-	var (
-		cmd            *exec.Cmd
-		stdout, stderr bytes.Buffer
-	)
-
-	// ➜ security find-generic-password -wa 'Chrome'
-	if b.Storage() != unsupported {
-		cmd = exec.Command("security", "find-generic-password", "-wa", b.Storage())
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+	if b.KeyFilePath() == unsupported {
+		return nil, fmt.Errorf("%s %s", b.Name(), unsupported)
+	}
+	if _, err := os.Stat(b.KeyFilePath()); os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s secret key path is empty", b.Name())
+	}
+	keyFile, err := utils.ReadFile(b.KeyFilePath())
+	if err != nil {
+		return nil, err
+	}
+	encryptedKey := gjson.Get(keyFile, "os_crypt.encrypted_key")
+	if encryptedKey.Exists() {
+		pureKey, err := base64.StdEncoding.DecodeString(encryptedKey.String())
 		if err != nil {
 			return nil, err
 		}
-		if stderr.Len() > 0 {
-			err = errors.New(stderr.String())
+		masterKey, err := decrypt.DPAPI(pureKey[5:])
+		if err != nil {
 			return nil, err
 		}
-		temp := stdout.Bytes()
-		chromeSecret := temp[:len(temp)-1]
-		if chromeSecret == nil {
-			return nil, ErrWrongSecurityCommand
-		}
-		var chromeSalt = []byte("saltysalt")
-		// @https://source.chromium.org/chromium/chromium/src/+/master:components/os_crypt/os_crypt_mac.mm;l=157
-		key := pbkdf2.Key(chromeSecret, chromeSalt, 1003, 16, sha1.New)
-		return key, nil
-	} else {
-		return nil, errors.New(unsupported)
+		return masterKey, nil
 	}
+	return nil, nil
 }
 
 func (b gecko) MasterSecretKey() ([]byte, error) {

@@ -14,7 +14,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/moond4rk/hack-browser-data/internal/decrypt"
-	"github.com/moond4rk/hack-browser-data/utils"
+	"github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 var (

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moond4rk/hack-browser-data/core/decrypt"
-	"github.com/moond4rk/hack-browser-data/log"
-	"github.com/moond4rk/hack-browser-data/utils"
-
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/moond4rk/hack-browser-data/core/decrypt"
 	"github.com/tidwall/gjson"
+
+	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
+	"github.com/moond4rk/hack-browser-data/log"
 )
 
 type Item interface {
@@ -83,7 +83,7 @@ func NewBookmarks(main, sub string) Item {
 }
 
 func (b *bookmarks) ChromeParse(key []byte) error {
-	bookmarks, err := utils.ReadFile(ChromeBookmarkFile)
+	bookmarks, err := utils2.ReadFile(ChromeBookmarkFile)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func getBookmarkChildren(value gjson.Result, b *bookmarks) (children gjson.Resul
 		ID:        value.Get(bookmarkID).Int(),
 		Name:      value.Get(bookmarkName).String(),
 		URL:       value.Get(bookmarkUrl).String(),
-		DateAdded: utils.TimeEpochFormat(value.Get(bookmarkAdded).Int()),
+		DateAdded: utils2.TimeEpochFormat(value.Get(bookmarkAdded).Int()),
 	}
 	children = value.Get(bookmarkChildren)
 	if nodeType.Exists() {
@@ -159,9 +159,9 @@ func (b *bookmarks) FirefoxParse() error {
 		b.bookmarks = append(b.bookmarks, bookmark{
 			ID:        id,
 			Name:      title,
-			Type:      utils.BookMarkType(bType),
+			Type:      utils2.BookMarkType(bType),
 			URL:       bookmarkUrl,
-			DateAdded: utils.TimeStampFormat(dateAdded / 1000000),
+			DateAdded: utils2.TimeStampFormat(dateAdded / 1000000),
 		})
 	}
 	return nil
@@ -237,12 +237,12 @@ func (c *cookies) ChromeParse(secretKey []byte) error {
 			Host:         host,
 			Path:         path,
 			encryptValue: encryptValue,
-			IsSecure:     utils.IntToBool(isSecure),
-			IsHTTPOnly:   utils.IntToBool(isHTTPOnly),
-			HasExpire:    utils.IntToBool(hasExpire),
-			IsPersistent: utils.IntToBool(isPersistent),
-			CreateDate:   utils.TimeEpochFormat(createDate),
-			ExpireDate:   utils.TimeEpochFormat(expireDate),
+			IsSecure:     utils2.IntToBool(isSecure),
+			IsHTTPOnly:   utils2.IntToBool(isHTTPOnly),
+			HasExpire:    utils2.IntToBool(hasExpire),
+			IsPersistent: utils2.IntToBool(isPersistent),
+			CreateDate:   utils2.TimeEpochFormat(createDate),
+			ExpireDate:   utils2.TimeEpochFormat(expireDate),
 		}
 		// remove 'v10'
 		if secretKey == nil {
@@ -293,10 +293,10 @@ func (c *cookies) FirefoxParse() error {
 			KeyName:    name,
 			Host:       host,
 			Path:       path,
-			IsSecure:   utils.IntToBool(isSecure),
-			IsHTTPOnly: utils.IntToBool(isHttpOnly),
-			CreateDate: utils.TimeStampFormat(creationTime / 1000000),
-			ExpireDate: utils.TimeStampFormat(expiry),
+			IsSecure:   utils2.IntToBool(isSecure),
+			IsHTTPOnly: utils2.IntToBool(isHttpOnly),
+			CreateDate: utils2.TimeStampFormat(creationTime / 1000000),
+			ExpireDate: utils2.TimeStampFormat(expiry),
 			Value:      value,
 		})
 	}
@@ -364,7 +364,7 @@ func (h *historyData) ChromeParse(key []byte) error {
 			Url:           url,
 			Title:         title,
 			VisitCount:    visitCount,
-			LastVisitTime: utils.TimeEpochFormat(lastVisitTime),
+			LastVisitTime: utils2.TimeEpochFormat(lastVisitTime),
 		}
 		if err != nil {
 			log.Error(err)
@@ -419,7 +419,7 @@ func (h *historyData) FirefoxParse() error {
 			Title:         title,
 			Url:           url,
 			VisitCount:    visitCount,
-			LastVisitTime: utils.TimeStampFormat(visitDate / 1000000),
+			LastVisitTime: utils2.TimeStampFormat(visitDate / 1000000),
 		})
 		tempMap[id] = url
 	}
@@ -489,8 +489,8 @@ func (d *downloads) ChromeParse(key []byte) error {
 			TargetPath: targetPath,
 			Url:        tabUrl,
 			TotalBytes: totalBytes,
-			StartTime:  utils.TimeEpochFormat(startTime),
-			EndTime:    utils.TimeEpochFormat(endTime),
+			StartTime:  utils2.TimeEpochFormat(startTime),
+			EndTime:    utils2.TimeEpochFormat(endTime),
 			MimeType:   mimeType,
 		}
 		if err != nil {
@@ -551,8 +551,8 @@ func (d *downloads) FirefoxParse() error {
 				TargetPath: path,
 				Url:        url,
 				TotalBytes: fileSize.Int(),
-				StartTime:  utils.TimeStampFormat(dateAdded / 1000000),
-				EndTime:    utils.TimeStampFormat(endTime.Int() / 1000),
+				StartTime:  utils2.TimeStampFormat(dateAdded / 1000000),
+				EndTime:    utils2.TimeStampFormat(endTime.Int() / 1000),
 			})
 		}
 		tempMap[placeID] = url
@@ -639,9 +639,9 @@ func (p *passwords) ChromeParse(key []byte) error {
 			log.Debugf("%s have empty password %s", login.LoginUrl, err.Error())
 		}
 		if create > time.Now().Unix() {
-			login.CreateDate = utils.TimeEpochFormat(create)
+			login.CreateDate = utils2.TimeEpochFormat(create)
 		} else {
-			login.CreateDate = utils.TimeStampFormat(create)
+			login.CreateDate = utils2.TimeStampFormat(create)
 		}
 		login.Password = string(password)
 		p.logins = append(p.logins, login)
@@ -906,7 +906,7 @@ func getFirefoxLoginData() (l []loginData, err error) {
 			}
 			p, err = base64.StdEncoding.DecodeString(v.Get("encryptedPassword").String())
 			m.encryptPass = p
-			m.CreateDate = utils.TimeStampFormat(v.Get("timeCreated").Int() / 1000)
+			m.CreateDate = utils2.TimeStampFormat(v.Get("timeCreated").Int() / 1000)
 			l = append(l, m)
 		}
 	}
