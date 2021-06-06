@@ -1,11 +1,10 @@
 package hackbrowserdata
 
 import (
-	"bytes"
 	"crypto/sha1"
-	"errors"
-	"os/exec"
 
+	"github.com/godbus/dbus/v5"
+	keyring "github.com/ppacher/go-dbus-keyring"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -27,8 +26,9 @@ func (b gecko) Storage() string {
 	return unsupported
 }
 
+var rootProfile = "/home/*/"
+
 func (b webkit) ProfilePath() string {
-	const rootProfile = "/home/*/"
 	switch b {
 	case Chrome:
 		return rootProfile + ".config/google-chrome/*/"
@@ -44,9 +44,8 @@ func (b webkit) ProfilePath() string {
 		return rootProfile + ".config/opera/"
 	case Vivaldi:
 		return rootProfile + ".config/vivaldi/*/"
-
 	default:
-		return "Unknown Browser"
+		return unsupported
 	}
 }
 
@@ -76,36 +75,51 @@ func (b gecko) KeyFilePath() string {
 }
 
 func (b webkit) MasterSecretKey() ([]byte, error) {
-	var (
-		cmd            *exec.Cmd
-		stdout, stderr bytes.Buffer
-	)
-
-	// ➜ security find-generic-password -wa 'Chrome'
-	if b.Storage() != unsupported {
-		cmd = exec.Command("security", "find-generic-password", "-wa", b.Storage())
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+	// what is d-bus @https://dbus.freedesktop.org/
+	var secretKey []byte
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return nil, err
+	}
+	svc, err := keyring.GetSecretService(conn)
+	if err != nil {
+		return nil, err
+	}
+	session, err := svc.OpenSession()
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close()
+	collections, err := svc.GetAllCollections()
+	if err != nil {
+		return nil, err
+	}
+	for _, col := range collections {
+		items, err := col.GetAllItems()
 		if err != nil {
 			return nil, err
 		}
-		if stderr.Len() > 0 {
-			err = errors.New(stderr.String())
-			return nil, err
+		for _, item := range items {
+			label, err := item.GetLabel()
+			if err != nil {
+				continue
+			}
+			if label == b.Storage() {
+				se, err := item.GetSecret(session.Path())
+				if err != nil {
+					return nil, err
+				}
+				secretKey = se.Value
+			}
 		}
-		temp := stdout.Bytes()
-		chromeSecret := temp[:len(temp)-1]
-		if chromeSecret == nil {
-			return nil, ErrWrongSecurityCommand
-		}
-		var chromeSalt = []byte("saltysalt")
-		// @https://source.chromium.org/chromium/chromium/src/+/master:components/os_crypt/os_crypt_mac.mm;l=157
-		key := pbkdf2.Key(chromeSecret, chromeSalt, 1003, 16, sha1.New)
-		return key, nil
-	} else {
-		return nil, errors.New(unsupported)
 	}
+	if secretKey == nil {
+		return nil, errDbusSecretIsEmpty
+	}
+	var salt = []byte("saltysalt")
+	// @https://source.chromium.org/chromium/chromium/src/+/master:components/os_crypt/os_crypt_linux.cc
+	key := pbkdf2.Key(secretKey, salt, 1, 16, sha1.New)
+	return key, nil
 }
 
 func (b gecko) MasterSecretKey() ([]byte, error) {

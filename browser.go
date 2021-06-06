@@ -194,6 +194,12 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 var (
 	ErrWrongSecurityCommand = errors.New("wrong security command")
 )
+var (
+	errItemNotSupported    = errors.New(`item not supported, default is "all", choose from history|download|password|bookmark|cookie`)
+	errBrowserNotSupported = errors.New("browser not supported")
+	errChromeSecretIsEmpty = errors.New("chrome secret is empty")
+	errDbusSecretIsEmpty   = errors.New("dbus secret key is empty")
+)
 
 // getAbsPath 获取文件的绝对路径
 func getAbsPath(profilePath, file string) (string, error) {
