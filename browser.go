@@ -9,7 +9,12 @@ import (
 	"strings"
 )
 
-type Browser interface {
+type Browser struct {
+	Client     BrowserClient
+	ClientList []BrowserClient
+}
+
+type BrowserClient interface {
 	Name() string
 
 	Storage() string
@@ -23,7 +28,7 @@ type Browser interface {
 	GetBrowsingData(item Itemer) (BrowsingData, error)
 }
 
-func NewBrowser(browser Browser) (Browser, error) {
+func NewBrowser(browser BrowserClient) (BrowserClient, error) {
 	if browser.ProfilePath() != unsupported {
 		return browser, nil
 	} else {
@@ -31,8 +36,8 @@ func NewBrowser(browser Browser) (Browser, error) {
 	}
 }
 
-func NewBrowserList() []Browser {
-	var browserList []Browser
+func NewBrowserList() []BrowserClient {
+	var browserList []BrowserClient
 	for i := 0; i <= int(Vivaldi); i++ {
 		if webkit(i).ProfilePath() != unsupported {
 			browserList = append(browserList, webkit(i))

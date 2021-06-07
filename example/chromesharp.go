@@ -19,27 +19,27 @@ func FirefoxPassword() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(password.(*hbd.GeckoPassword))
+	fmt.Println("password", password.(*hbd.GeckoPassword))
 	bookmark, err := b.GetBrowsingData(hbd.Bookmark)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(bookmark.(*hbd.GeckoBookmark))
+	fmt.Println("bookmark", bookmark.(*hbd.GeckoBookmark))
 	history, err := b.GetBrowsingData(hbd.History)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(history.(*hbd.GeckoHistory))
+	fmt.Printf("history\n %#v\n", history.(*hbd.GeckoHistory))
 	cookie, err := b.GetBrowsingData(hbd.Cookie)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(cookie.(*hbd.GeckoCookie))
+	fmt.Println("cookie", cookie.(*hbd.GeckoCookie))
 	download, err := b.GetBrowsingData(hbd.Download)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(download.(*hbd.GeckoDownload))
+	fmt.Println("download", download.(*hbd.GeckoDownload))
 }
 
 func ChromePassword() {
