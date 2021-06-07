@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 	"time"
 
@@ -23,9 +22,9 @@ var (
 	queryChromiumHistory  = `SELECT url, title, visit_count, last_visit_time FROM urls`
 	queryChromiumDownload = `SELECT target_path, tab_url, total_bytes, start_time, end_time, mime_type FROM downloads`
 	queryChromiumCookie   = `SELECT name, encrypted_value, host_key, path, creation_utc, expires_utc, is_secure, is_httponly, has_expires, is_persistent FROM cookies`
-	queryFirefoxHistory   = `SELECT id, url, last_visit_date, title, visit_count FROM moz_places`
+	queryFirefoxHistory   = `SELECT id, url, last_visit_date, title, visit_count FROM moz_places where title not null`
 	queryFirefoxDownload  = `SELECT place_id, GROUP_CONCAT(content), url, dateAdded FROM (SELECT * FROM moz_annos INNER JOIN moz_places ON moz_annos.place_id=moz_places.id) t GROUP BY place_id`
-	queryFirefoxBookMarks = `SELECT id, fk, type, dateAdded, title FROM moz_bookmarks`
+	queryFirefoxBookMarks = `SELECT id, url, type, dateAdded, title FROM (SELECT * FROM moz_bookmarks INNER JOIN moz_places ON moz_bookmarks.fk=moz_places.id)`
 	queryFirefoxCookie    = `SELECT name, value, host, path, creationTime, expiry, isSecure, isHttpOnly FROM moz_cookies`
 	queryMetaData         = `SELECT item1, item2 FROM metaData WHERE id = 'password'`
 	queryNssPrivate       = `SELECT a11, a102 from nssPrivate`
@@ -57,9 +56,8 @@ func (wp *WebkitPassword) parse(itemer Itemer, masterKey []byte) error {
 			pwd, password []byte
 			create        int64
 		)
-		err = rows.Scan(&url, &username, &pwd, &create)
-		if err != nil {
-			log.Println(err)
+		if err := rows.Scan(&url, &username, &pwd, &create); err != nil {
+			fmt.Println(err)
 		}
 		login := loginData{
 			UserName:    username,
@@ -460,7 +458,6 @@ func (g *GeckoBookmark) parse(itemer Itemer, masterKey []byte) error {
 		err          error
 		keyDB        *sql.DB
 		bookmarkRows *sql.Rows
-		bookmarkUrl  string
 	)
 	keyDB, err = sql.Open("sqlite3", itemer.FileName(Firefox))
 	if err != nil {
@@ -476,17 +473,17 @@ func (g *GeckoBookmark) parse(itemer Itemer, masterKey []byte) error {
 	defer bookmarkRows.Close()
 	for bookmarkRows.Next() {
 		var (
-			id, fk, bType, dateAdded int64
-			title                    string
+			id, bType, dateAdded int64
+			title, url           string
 		)
-		if err = bookmarkRows.Scan(&id, &fk, &bType, &dateAdded, &title); err != nil {
-			return err
+		if err = bookmarkRows.Scan(&id, &url, &bType, &dateAdded, &title); err != nil {
+			fmt.Println(err)
 		}
 		*g = append(*g, bookmark{
 			ID:        id,
 			Name:      title,
 			Type:      utils.BookMarkType(bType),
-			URL:       bookmarkUrl,
+			URL:       url,
 			DateAdded: utils.TimeStampFormat(dateAdded / 1000000),
 		})
 	}
