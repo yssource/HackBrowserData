@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,7 +38,7 @@ type BrowsingData interface {
 
 type WebkitPassword []loginData
 
-func (wp *WebkitPassword) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitPassword) parse(itemer Itemer, masterKey []byte) error {
 	loginDB, err := sql.Open("sqlite3", itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -67,12 +68,15 @@ func (wp *WebkitPassword) parse(itemer Itemer, masterKey []byte) error {
 		if len(pwd) > 0 {
 			if masterKey == nil {
 				password, err = decrypt.DPAPI(pwd)
+				if err != nil {
+					fmt.Println(err)
+				}
 			} else {
 				password, err = decrypt.ChromePass(masterKey, pwd)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
-		}
-		if err != nil {
-			fmt.Printf("%s have empty password %s\n", login.LoginUrl, err.Error())
 		}
 		if create > time.Now().Unix() {
 			login.CreateDate = utils.TimeEpochFormat(create)
@@ -80,14 +84,17 @@ func (wp *WebkitPassword) parse(itemer Itemer, masterKey []byte) error {
 			login.CreateDate = utils.TimeStampFormat(create)
 		}
 		login.Password = string(password)
-		*wp = append(*wp, login)
+		*w = append(*w, login)
 	}
+	sort.Slice(*w, func(i, j int) bool {
+		return (*w)[i].CreateDate.After((*w)[j].CreateDate)
+	})
 	return nil
 }
 
 type WebkitCookie []cookie
 
-func (wc *WebkitCookie) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitCookie) parse(itemer Itemer, masterKey []byte) error {
 	cookieDB, err := sql.Open("sqlite3", itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -122,26 +129,31 @@ func (wc *WebkitCookie) parse(itemer Itemer, masterKey []byte) error {
 			ExpireDate:   utils.TimeEpochFormat(expireDate),
 		}
 		// TODO: replace DPAPI
-		if masterKey == nil {
-			value, err = decrypt.DPAPI(encryptValue)
-			if err != nil {
-
-			}
-		} else {
-			value, err = decrypt.ChromePass(masterKey, encryptValue)
-			if err != nil {
-
+		if len(encryptValue) > 0 {
+			if masterKey == nil {
+				value, err = decrypt.DPAPI(encryptValue)
+				if err != nil {
+					fmt.Println(err)
+				}
+			} else {
+				value, err = decrypt.ChromePass(masterKey, encryptValue)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 		cookie.Value = string(value)
-		*wc = append(*wc, cookie)
+		*w = append(*w, cookie)
 	}
+	sort.Slice(*w, func(i, j int) bool {
+		return (*w)[i].CreateDate.After((*w)[j].CreateDate)
+	})
 	return nil
 }
 
 type WebkitBookmark []bookmark
 
-func (wb *WebkitBookmark) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitBookmark) parse(itemer Itemer, masterKey []byte) error {
 	bookmarks, err := utils.ReadFile(itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -150,14 +162,17 @@ func (wb *WebkitBookmark) parse(itemer Itemer, masterKey []byte) error {
 	if r.Exists() {
 		roots := r.Get("roots")
 		roots.ForEach(func(key, value gjson.Result) bool {
-			getBookmarkChildren(value, wb)
+			getBookmarkChildren(value, w)
 			return true
 		})
 	}
+	sort.Slice(*w, func(i, j int) bool {
+		return (*w)[i].DateAdded.After((*w)[j].DateAdded)
+	})
 	return nil
 }
 
-func getBookmarkChildren(value gjson.Result, wb *WebkitBookmark) (children gjson.Result) {
+func getBookmarkChildren(value gjson.Result, w *WebkitBookmark) (children gjson.Result) {
 	const (
 		bookmarkID       = "id"
 		bookmarkAdded    = "date_added"
@@ -176,10 +191,10 @@ func getBookmarkChildren(value gjson.Result, wb *WebkitBookmark) (children gjson
 	children = value.Get(bookmarkChildren)
 	if nodeType.Exists() {
 		bm.Type = nodeType.String()
-		*wb = append(*wb, bm)
+		*w = append(*w, bm)
 		if children.Exists() && children.IsArray() {
 			for _, v := range children.Array() {
-				children = getBookmarkChildren(v, wb)
+				children = getBookmarkChildren(v, w)
 			}
 		}
 	}
@@ -188,7 +203,7 @@ func getBookmarkChildren(value gjson.Result, wb *WebkitBookmark) (children gjson
 
 type WebkitHistory []history
 
-func (wh *WebkitHistory) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitHistory) parse(itemer Itemer, masterKey []byte) error {
 	historyDB, err := sql.Open("sqlite3", itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -215,14 +230,17 @@ func (wh *WebkitHistory) parse(itemer Itemer, masterKey []byte) error {
 			VisitCount:    visitCount,
 			LastVisitTime: utils.TimeEpochFormat(lastVisitTime),
 		}
-		*wh = append(*wh, data)
+		*w = append(*w, data)
 	}
+	sort.Slice(*w, func(i, j int) bool {
+		return (*w)[i].VisitCount > (*w)[j].VisitCount
+	})
 	return nil
 }
 
 type WebkitCreditCard []card
 
-func (wc *WebkitCreditCard) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitCreditCard) parse(itemer Itemer, masterKey []byte) error {
 	creditDB, err := sql.Open("sqlite3", itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -250,23 +268,23 @@ func (wc *WebkitCreditCard) parse(itemer Itemer, masterKey []byte) error {
 		if masterKey == nil {
 			value, err = decrypt.DPAPI(encryptValue)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 		} else {
 			value, err = decrypt.ChromePass(masterKey, encryptValue)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 		}
 		creditCardInfo.CardNumber = string(value)
-		*wc = append(*wc, creditCardInfo)
+		*w = append(*w, creditCardInfo)
 	}
 	return nil
 }
 
 type WebkitDownload []download
 
-func (wd *WebkitDownload) parse(itemer Itemer, masterKey []byte) error {
+func (w *WebkitDownload) parse(itemer Itemer, masterKey []byte) error {
 	historyDB, err := sql.Open("sqlite3", itemer.FileName(Chrome))
 	if err != nil {
 		return err
@@ -293,8 +311,11 @@ func (wd *WebkitDownload) parse(itemer Itemer, masterKey []byte) error {
 			EndTime:    utils.TimeEpochFormat(endTime),
 			MimeType:   mimeType,
 		}
-		*wd = append(*wd, data)
+		*w = append(*w, data)
 	}
+	sort.Slice(*w, func(i, j int) bool {
+		return (*w)[i].TotalBytes > (*w)[j].TotalBytes
+	})
 	return nil
 }
 
@@ -361,6 +382,9 @@ func (g *GeckoPassword) parse(itemer Itemer, masterKey []byte) error {
 			}
 		}
 	}
+	sort.Slice(*g, func(i, j int) bool {
+		return (*g)[i].CreateDate.After((*g)[j].CreateDate)
+	})
 	return nil
 }
 
@@ -487,6 +511,9 @@ func (g *GeckoBookmark) parse(itemer Itemer, masterKey []byte) error {
 			DateAdded: utils.TimeStampFormat(dateAdded / 1000000),
 		})
 	}
+	sort.Slice(*g, func(i, j int) bool {
+		return (*g)[i].DateAdded.After((*g)[j].DateAdded)
+	})
 	return nil
 }
 
@@ -528,6 +555,9 @@ func (g *GeckoHistory) parse(itemer Itemer, masterKey []byte) error {
 			LastVisitTime: utils.TimeStampFormat(visitDate / 1000000),
 		})
 	}
+	sort.Slice(*g, func(i, j int) bool {
+		return (*g)[i].VisitCount < (*g)[j].VisitCount
+	})
 	return nil
 }
 
@@ -576,6 +606,9 @@ func (g *GeckoDownload) parse(itemer Itemer, masterKey []byte) error {
 			})
 		}
 	}
+	sort.Slice(*g, func(i, j int) bool {
+		return (*g)[i].TotalBytes < (*g)[j].TotalBytes
+	})
 	return nil
 }
 
