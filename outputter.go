@@ -1,24 +1,46 @@
 package hackbrowserdata
 
 import (
+	"encoding/csv"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+
+	jsongo "github.com/json-iterator/go"
+	"github.com/jszwec/csvutil"
+)
+
+type outputType int
+
+const (
+	OutputJson outputType = iota + 1
+	OutputCSV
 )
 
 type OutPutter struct {
-	Json bool
+	OutputType outputType
 }
 
-func OutPutToJson(data BrowsingData) (err error) {
-	switch data {
-	case &WebkitPassword{}:
+func NewOutPutter(outputType outputType) *OutPutter {
+	return &OutPutter{OutputType: outputType}
+}
 
+func (o *OutPutter) Write(data BrowsingData, writer io.Writer) error {
+	switch o.OutputType {
+	case OutputCSV:
+		encoder := csvutil.NewEncoder(csv.NewWriter(writer))
+		return encoder.Encode(data)
+	case OutputJson:
+		encoder := jsongo.NewEncoder(writer)
+		encoder.SetIndent("  ", "  ")
+		encoder.SetEscapeHTML(false)
+		return encoder.Encode(data)
 	}
-	return err
+	return nil
 }
 
-func (o *OutPutter) createFile(filename string, appendtoFile bool) (*os.File, error) {
+func (o *OutPutter) CreateFile(filename string, appendtoFile bool) (*os.File, error) {
 	if filename == "" {
 		return nil, errors.New("empty filename")
 	}

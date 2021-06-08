@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	FirefoxPassword()
+	ChromePassword()
 }
 
 func FirefoxPassword() {
@@ -16,6 +16,15 @@ func FirefoxPassword() {
 		panic(err)
 	}
 	password, err := b.GetBrowsingData(hbd.Password)
+	if err != nil {
+		panic(err)
+	}
+	outputter := hbd.NewOutPutter(hbd.OutputCSV)
+	file, err := outputter.CreateFile(hbd.Password.Name(), true)
+	if err != nil {
+		panic(err)
+	}
+	err = outputter.Write(password, file)
 	if err != nil {
 		panic(err)
 	}
@@ -51,12 +60,27 @@ func ChromePassword() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(password.(*hbd.WebkitPassword))
+	outputter := hbd.NewOutPutter(hbd.OutputCSV)
+	file, err := outputter.CreateFile(hbd.Password.Name()+".csv", true)
+	if err != nil {
+		panic(err)
+	}
+	err = outputter.Write(password, file)
+	if err != nil {
+		panic(err)
+	}
 	bookmark, err := b.GetBrowsingData(hbd.Bookmark)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(bookmark.(*hbd.WebkitBookmark))
+	fils, err := outputter.CreateFile(hbd.Bookmark.Name()+".csv", true)
+	if err != nil {
+		panic(err)
+	}
+	err = outputter.Write(bookmark, fils)
+	if err != nil {
+		panic(err)
+	}
 	history, err := b.GetBrowsingData(hbd.History)
 	if err != nil {
 		panic(err)

@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/godbus/dbus/v5 v5.0.4
+	github.com/json-iterator/go v1.1.11
 	github.com/jszwec/csvutil v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/ppacher/go-dbus-keyring v1.0.1

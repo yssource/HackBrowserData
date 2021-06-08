@@ -6,7 +6,6 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/moond4rk/hack-browser-data/core"
 	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
