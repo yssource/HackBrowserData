@@ -18,6 +18,17 @@ const (
 	OutputCSV
 )
 
+func (o outputType) String() string {
+	switch o {
+	case OutputJson:
+		return ".json"
+	case OutputCSV:
+		return ".csv"
+	default:
+		return "unknown type"
+	}
+}
+
 type OutPutter struct {
 	OutputType outputType
 }

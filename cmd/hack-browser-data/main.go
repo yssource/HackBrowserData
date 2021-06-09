@@ -5,11 +5,10 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
-
-	utils2 "github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 var (
+	version           string
 	browserName       string
 	exportDir         string
 	outputFormat      string
@@ -20,7 +19,6 @@ var (
 )
 
 func main() {
-	Execute()
 }
 
 func Execute() {
@@ -28,7 +26,7 @@ func Execute() {
 		Name:  "hack-browser-data",
 		Usage: "Export passwords/cookies/history/bookmarks from browser",
 		UsageText: "[hack-browser-data -b chrome -f json -dir results -cc]\n 	Get all data(password/cookie/history/bookmark) from chrome",
-		Version: "0.3.5",
+		Version: version,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "verbose", Aliases: []string{"vv"}, Destination: &verbose, Value: false, Usage: "verbose"},
 			&cli.BoolFlag{Name: "compress", Aliases: []string{"cc"}, Destination: &compress, Value: false, Usage: "compress result to zip"},
@@ -40,82 +38,10 @@ func Execute() {
 		},
 		HideHelpCommand: true,
 		Action: func(c *cli.Context) error {
-			var (
-				browsers []core.Browser
-				err      error
-			)
-			if verbose {
-				log.InitLog("debug")
-			} else {
-				log.InitLog("error")
-			}
-			if customProfilePath != "" {
-				browsers, err = core.PickCustomBrowser(browserName, customProfilePath, customKeyPath)
-				if err != nil {
-					log.Error(err)
-				}
-			} else {
-				// default select all browsers
-				browsers, err = core.PickBrowser(browserName)
-				if err != nil {
-					log.Error(err)
-				}
-			}
-			err = utils2.MakeDir(exportDir)
-			if err != nil {
-				log.Error(err)
-			}
-			for _, browser := range browsers {
-				err := browser.InitSecretKey()
-				if err != nil {
-					log.Error(err)
-				}
-				// default select all items
-				// you can get single item with browser.GetItem(itemName)
-				items, err := browser.GetAllItems()
-				if err != nil {
-					log.Error(err)
-				}
-				name := browser.GetName()
-				key := browser.GetSecretKey()
-				for _, item := range items {
-					err := item.CopyDB()
-					if err != nil {
-						log.Error(err)
-					}
-					switch browser.(type) {
-					case *core.Chromium:
-						err := item.ChromeParse(key)
-						if err != nil {
-							log.Error(err)
-						}
-					case *core.Firefox:
-						err := item.FirefoxParse()
-						if err != nil {
-							log.Error(err)
-						}
-					}
-					err = item.Release()
-					if err != nil {
-						log.Error(err)
-					}
-					err = item.OutPut(outputFormat, name, exportDir)
-					if err != nil {
-						log.Error(err)
-					}
-				}
-			}
-			if compress {
-				err = utils2.Compress(exportDir)
-				if err != nil {
-					log.Error(err)
-				}
-			}
 			return nil
 		},
 	}
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Error(err)
+	if err := app.Run(os.Args); err != nil {
+		panic(err)
 	}
 }

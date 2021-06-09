@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
+
 	hbd "github.com/moond4rk/hack-browser-data"
 )
 
 func main() {
-	ChromePassword()
-}
 
+}
 
 func ChromePassword() {
 	outputter := hbd.NewOutPutter(hbd.OutputCSV)

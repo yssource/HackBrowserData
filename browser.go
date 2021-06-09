@@ -10,8 +10,14 @@ import (
 )
 
 type Browser struct {
-	Client     BrowserClient
-	ClientList []BrowserClient
+	ClientList  []BrowserClient
+	ItemerList  []Itemer
+	name        string
+	storage     string
+	profilePath string
+	keyPath     string
+	outputType  outputType
+	filename    string
 }
 
 type BrowserClient interface {
@@ -28,12 +34,37 @@ type BrowserClient interface {
 	GetBrowsingData(item Itemer) (BrowsingData, error)
 }
 
-func NewBrowser(browser BrowserClient) (BrowserClient, error) {
-	if browser.ProfilePath() != unsupported {
-		return browser, nil
-	} else {
-		return nil, errors.New(unsupported)
+type Option func(*Browser) error
+
+func NewBrowser(options ...Option) (*Browser, error) {
+	browser := &Browser{}
+	for _, option := range options {
+		err := option(browser)
+		if err != nil {
+			return nil, err
+		}
 	}
+	return browser, nil
+}
+
+func (b *Browser) Run() error {
+	outputter := NewOutPutter(b.outputType)
+	for _, client := range b.ClientList {
+		for _, itemer := range b.ItemerList {
+			data, err := client.GetBrowsingData(itemer)
+			// Handle error
+			if err != nil {
+				return err
+			}
+			filename := client.Name() + "_" + itemer.Name() + b.outputType.String()
+			f, err := outputter.CreateFile(filename, true)
+			err = outputter.Write(data, f)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func NewBrowserList() []BrowserClient {
@@ -205,18 +236,6 @@ var (
 	errChromeSecretIsEmpty = errors.New("chrome secret is empty")
 	errDbusSecretIsEmpty   = errors.New("dbus secret key is empty")
 )
-
-// getAbsPath 获取文件的绝对路径
-func getAbsPath(profilePath, file string) (string, error) {
-	p, err := filepath.Glob(filepath.Join(profilePath, file))
-	if err != nil {
-		return "", err
-	}
-	if len(p) > 0 {
-		return p[0], nil
-	}
-	return "", fmt.Errorf("find %s failed", file)
-}
 
 // copyToLocal copy file to local path
 func copyFileToLocal(profilePath, filename string) error {

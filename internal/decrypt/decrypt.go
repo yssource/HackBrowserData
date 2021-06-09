@@ -16,7 +16,7 @@ import (
 var (
 	errSecurityKeyIsEmpty = errors.New("input [security find-generic-password -wa 'Chrome'] in terminal")
 	errPasswordIsEmpty    = errors.New("password is empty")
-	errDecryptFailed      = errors.New("decrypt failed, password is empty")
+	errDecryptFailed      = errors.New("decrypt encrypt value failed")
 	errDecodeASN1Failed   = errors.New("decode ASN1 data failed")
 )
 
@@ -72,7 +72,7 @@ func (n NssPBE) Decrypt(globalSalt, masterPwd []byte) (key []byte, err error) {
 	hp := sha1.Sum(glmp)
 	s := append(hp[:], n.EntrySalt...)
 	chp := sha1.Sum(s)
-	pes := PaddingZero(n.EntrySalt, 20)
+	pes := paddingZero(n.EntrySalt, 20)
 	tk := hmac.New(sha1.New, chp[:])
 	tk.Write(pes)
 	pes = append(pes, n.EntrySalt...)
@@ -201,7 +201,7 @@ func des3Decrypt(key, iv []byte, src []byte) ([]byte, error) {
 	return sq, nil
 }
 
-func PaddingZero(s []byte, l int) []byte {
+func paddingZero(s []byte, l int) []byte {
 	h := l - len(s)
 	if h <= 0 {
 		return s
