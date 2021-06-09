@@ -10,7 +10,7 @@ import (
 )
 
 type Browser struct {
-	ClientList  []BrowserClient
+	ClientList  []Client
 	ItemerList  []Itemer
 	name        string
 	storage     string
@@ -20,7 +20,7 @@ type Browser struct {
 	filename    string
 }
 
-type BrowserClient interface {
+type Client interface {
 	Name() string
 
 	Storage() string
@@ -67,19 +67,19 @@ func (b *Browser) Run() error {
 	return nil
 }
 
-func NewBrowserList() []BrowserClient {
-	var browserList []BrowserClient
+func NewClientList() []Client {
+	var clientList []Client
 	for i := 0; i <= int(Vivaldi); i++ {
 		if webkit(i).ProfilePath() != unsupported {
-			browserList = append(browserList, webkit(i))
+			clientList = append(clientList, webkit(i))
 		}
 	}
 	for i := 0; i <= int(FirefoxESR); i++ {
 		if gecko(i).ProfilePath() != unsupported {
-			browserList = append(browserList, gecko(i))
+			clientList = append(clientList, gecko(i))
 		}
 	}
-	return browserList
+	return clientList
 }
 
 type (

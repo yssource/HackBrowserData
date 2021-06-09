@@ -13,8 +13,8 @@ const (
 
 type Itemer interface {
 	Name() string
-	FileName(browser BrowserClient) string
-	Data(browser BrowserClient) BrowsingData
+	FileName(browser Client) string
+	Data(browser Client) BrowsingData
 }
 
 const unsupportedItem = "Unsupported Item"
@@ -39,7 +39,7 @@ func (i item) Name() string {
 }
 
 // FileName return filename by browser type
-func (i item) FileName(client BrowserClient) string {
+func (i item) FileName(client Client) string {
 	const (
 		chromePasswordFile = "Login Data"
 		chromeHistoryFile  = "History"
@@ -89,7 +89,7 @@ func (i item) FileName(client BrowserClient) string {
 	return unsupported
 }
 
-func (i item) Data(client BrowserClient) BrowsingData {
+func (i item) Data(client Client) BrowsingData {
 	switch client.(type) {
 	case webkit:
 		switch i {
