@@ -33,6 +33,9 @@ var (
 )
 
 type BrowsingData interface {
+	// parse is used to get the browsing data
+	// itermer is the required data type
+	// masterKey is the decryption key stored in the system by the browser
 	parse(itemer Itemer, masterKey []byte) error
 }
 
