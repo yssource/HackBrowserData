@@ -11,6 +11,15 @@ const (
 	CreditCard
 )
 
+func getAllItemer() (items []Itemer) {
+	for i := 0; i <= int(CreditCard); i++ {
+		if item(i).Name() != unsupportedItem {
+			items = append(items, item(i))
+		}
+	}
+	return items
+}
+
 type Itemer interface {
 	Name() string
 	FileName(browser Client) string
@@ -32,7 +41,7 @@ func (i item) Name() string {
 	case Download:
 		return "Download"
 	case CreditCard:
-		return "Credit Card"
+		return "CreditCard"
 	default:
 		return unsupportedItem
 	}

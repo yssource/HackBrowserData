@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -29,6 +30,39 @@ func BookMarkType(a int64) string {
 		return "folder"
 	}
 }
+
+// CopyFileToLocal copy file to local path
+func CopyFileToLocal(profilePath, filename string) error {
+	p, err := filepath.Glob(filepath.Join(profilePath, filename))
+	if err != nil {
+		return err
+	}
+	// TODO, handle error if file not exist
+	if len(p) <= 0 {
+		return fmt.Errorf("find %s failed", filename)
+	} else {
+		src := p[0]
+		locals, _ := filepath.Glob("*")
+		for _, v := range locals {
+			if v == filename {
+				err := os.Remove(filename)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		sourceFile, err := ioutil.ReadFile(src)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(filename, sourceFile, 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 
 func TimeStampFormat(stamp int64) time.Time {
 	s1 := time.Unix(stamp, 0)

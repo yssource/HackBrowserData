@@ -3,54 +3,47 @@ package hackbrowserdata
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 type Browser struct {
-	ClientList  []Client
-	ItemerList  []Itemer
+	clientList  []Client
+	itemerList  []Itemer
 	name        string
 	storage     string
 	profilePath string
 	keyPath     string
 	outputType  outputType
+	outputDir   string
 	filename    string
-}
-
-type Client interface {
-	Name() string
-
-	Storage() string
-
-	ProfilePath() string
-
-	KeyFilePath() string
-
-	MasterSecretKey() ([]byte, error)
-
-	GetBrowsingData(item Itemer) (BrowsingData, error)
 }
 
 type Option func(*Browser) error
 
 func NewBrowser(options ...Option) (*Browser, error) {
-	browser := &Browser{}
+	b := &Browser{}
 	for _, option := range options {
-		err := option(browser)
+		err := option(b)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return browser, nil
+	if len(b.clientList) <= 0 {
+		return nil, errors.New("clientlist must be set")
+	}
+	if len(b.itemerList) <= 0 {
+		return nil, errors.New("itemerlist must be set")
+	}
+	return b, nil
 }
 
 func (b *Browser) Run() error {
 	outputter := NewOutPutter(b.outputType)
-	for _, client := range b.ClientList {
-		for _, itemer := range b.ItemerList {
+	for _, client := range b.clientList {
+		for _, itemer := range b.itemerList {
 			data, err := client.GetBrowsingData(itemer)
 			// Handle error
 			if err != nil {
@@ -67,7 +60,47 @@ func (b *Browser) Run() error {
 	return nil
 }
 
-func NewClientList() []Client {
+// WithClient gets a single browser
+func WithClient(cname string) Option {
+	return func(b *Browser) error {
+		names := NameBrowserMap()
+		if client, ok := names[cname]; ok {
+			b.clientList = append(b.clientList, client)
+		} else{
+			return fmt.Errorf("not support this browser %s", client.Name())
+		}
+		return nil
+	}
+}
+
+// WithAllClients is a option to add all browser clients
+func WithAllClients() Option {
+	return func(b *Browser) error {
+		b.clientList = getAllClients()
+		return nil
+	}
+}
+
+// ListAllBrowserName get all browsers supported by this OS
+func ListAllBrowserName() (names []string) {
+	list := getAllClients()
+	for _, v := range list {
+		names = append(names, strings.ToLower(v.Name()))
+	}
+	return names
+}
+
+func NameBrowserMap() map[string]Client {
+	var names = make(map[string]Client)
+	clients := getAllClients()
+	for i, name := range ListAllBrowserName() {
+		names[name] = clients[i]
+	}
+	return names
+}
+
+// getAllClients using the profile path is exist to get all browser are supported by this OS
+func getAllClients() []Client {
 	var clientList []Client
 	for i := 0; i <= int(Vivaldi); i++ {
 		if webkit(i).ProfilePath() != unsupported {
@@ -119,9 +152,9 @@ func (b webkit) Name() string {
 	case Chromium:
 		return "Chromium"
 	case ChromeBeta:
-		return "Chrome Beta"
+		return "ChromeBeta"
 	case Edge:
-		return "Microsoft Edge"
+		return "Edge"
 	case Speed360:
 		return "360speed"
 	case QQ:
@@ -139,18 +172,32 @@ func (b webkit) Name() string {
 	}
 }
 
+type Client interface {
+	Name() string
+
+	Storage() string
+
+	ProfilePath() string
+
+	KeyFilePath() string
+
+	MasterSecretKey() ([]byte, error)
+
+	GetBrowsingData(item Itemer) (BrowsingData, error)
+}
+
 func (b gecko) Name() string {
 	switch b {
 	case Firefox:
 		return "Firefox"
 	case FirefoxBeta:
-		return "Firefox Beta"
+		return "Firefox-Beta"
 	case FirefoxDev:
-		return "Firefox Dev"
+		return "Firefox-Dev"
 	case FirefoxNightly:
-		return "Firefox Nightly"
+		return "Firefox-Nightly"
 	case FirefoxESR:
-		return "Firefox ESR"
+		return "Firefox-ESR"
 	default:
 		return unsupported
 	}
@@ -169,7 +216,7 @@ func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 			return nil, err
 		}
 	}
-	err = copyFileToLocal(b.ProfilePath(), itemer.FileName(Chrome))
+	err = utils.CopyFileToLocal(b.ProfilePath(), itemer.FileName(Chrome))
 	if err != nil {
 		return nil, err
 	}
@@ -193,10 +240,10 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 	// firefox password need key4.db
 	if itemer == Password {
 		paths := strings.Split(itemer.FileName(b), "|")
-		if err := copyFileToLocal(b.ProfilePath(), paths[0]); err != nil {
+		if err := utils.CopyFileToLocal(b.ProfilePath(), paths[0]); err != nil {
 			fmt.Println(err)
 		}
-		if err := copyFileToLocal(b.ProfilePath(), paths[1]); err != nil {
+		if err := utils.CopyFileToLocal(b.ProfilePath(), paths[1]); err != nil {
 			fmt.Println(err)
 		}
 		data := itemer.Data(b)
@@ -211,8 +258,8 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 		}
 		return data, nil
 	} else {
-		if err := copyFileToLocal(b.ProfilePath(), itemer.FileName(b)); err != nil {
-
+		if err := utils.CopyFileToLocal(b.ProfilePath(), itemer.FileName(b)); err != nil {
+			fmt.Println(err)
 		}
 		data := itemer.Data(b)
 		err = data.parse(itemer, masterKey)
@@ -229,42 +276,5 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 
 var (
 	ErrWrongSecurityCommand = errors.New("wrong security command")
+	errDbusSecretIsEmpty    = errors.New("dbus secret key is empty")
 )
-var (
-	errItemNotSupported    = errors.New(`item not supported, default is "all", choose from history|download|password|bookmark|cookie`)
-	errBrowserNotSupported = errors.New("browser not supported")
-	errChromeSecretIsEmpty = errors.New("chrome secret is empty")
-	errDbusSecretIsEmpty   = errors.New("dbus secret key is empty")
-)
-
-// copyToLocal copy file to local path
-func copyFileToLocal(profilePath, filename string) error {
-	p, err := filepath.Glob(filepath.Join(profilePath, filename))
-	if err != nil {
-		return err
-	}
-	// TODO, handle error if file not exist
-	if len(p) <= 0 {
-		return fmt.Errorf("find %s failed", filename)
-	} else {
-		src := p[0]
-		locals, _ := filepath.Glob("*")
-		for _, v := range locals {
-			if v == filename {
-				err := os.Remove(filename)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		sourceFile, err := ioutil.ReadFile(src)
-		if err != nil {
-			return err
-		}
-		err = ioutil.WriteFile(filename, sourceFile, 0777)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
