@@ -186,3 +186,5 @@ History
 *.sqlite-wal
 main.go
 
+example
+
