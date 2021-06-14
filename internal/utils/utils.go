@@ -37,9 +37,8 @@ func CopyFileToLocal(profilePath, filename string) error {
 	if err != nil {
 		return err
 	}
-	// TODO, handle error if file not exist
 	if len(p) <= 0 {
-		return fmt.Errorf("find %s failed", filename)
+		return fmt.Errorf("find file %s failed", filename)
 	} else {
 		src := p[0]
 		locals, _ := filepath.Glob("*")
@@ -62,7 +61,6 @@ func CopyFileToLocal(profilePath, filename string) error {
 	}
 	return nil
 }
-
 
 func TimeStampFormat(stamp int64) time.Time {
 	s1 := time.Unix(stamp, 0)

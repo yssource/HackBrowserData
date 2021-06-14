@@ -26,7 +26,7 @@ type Itemer interface {
 	Data(browser Client) BrowsingData
 }
 
-const unsupportedItem = "Unsupported Item"
+const unsupportedItem = "unsupported item"
 
 func (i item) Name() string {
 	switch i {
@@ -92,8 +92,6 @@ func (i item) FileName(client Client) string {
 		default:
 			return unsupportedItem
 		}
-	default:
-		return unsupported
 	}
 	return unsupported
 }

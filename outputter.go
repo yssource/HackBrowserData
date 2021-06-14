@@ -2,13 +2,14 @@ package hackbrowserdata
 
 import (
 	"encoding/csv"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
 
-	jsongo "github.com/json-iterator/go"
-	"github.com/jszwec/csvutil"
+	"github.com/pkg/errors"
+
+	"github.com/gocarina/gocsv"
+	jsoniter "github.com/json-iterator/go"
 )
 
 type outputType int
@@ -37,13 +38,17 @@ func NewOutPutter(outputType outputType) *OutPutter {
 	return &OutPutter{OutputType: outputType}
 }
 
-func (o *OutPutter) Write(data BrowsingData, writer io.Writer) error {
+func (o *OutPutter) Write(data BrowsingData, writer *os.File) error {
 	switch o.OutputType {
 	case OutputCSV:
-		encoder := csvutil.NewEncoder(csv.NewWriter(writer))
-		return encoder.Encode(data)
+		gocsv.SetCSVWriter(func(w io.Writer) *gocsv.SafeCSVWriter {
+			writer := csv.NewWriter(w)
+			writer.Comma = ','
+			return gocsv.NewSafeCSVWriter(writer)
+		})
+		return gocsv.MarshalFile(data, writer)
 	case OutputJson:
-		encoder := jsongo.NewEncoder(writer)
+		encoder := jsoniter.NewEncoder(writer)
 		encoder.SetIndent("  ", "  ")
 		encoder.SetEscapeHTML(false)
 		return encoder.Encode(data)
@@ -51,7 +56,7 @@ func (o *OutPutter) Write(data BrowsingData, writer io.Writer) error {
 	return nil
 }
 
-func (o *OutPutter) CreateFile(filename string, appendtoFile bool) (*os.File, error) {
+func (o *OutPutter) CreateFile(filename string) (*os.File, error) {
 	if filename == "" {
 		return nil, errors.New("empty filename")
 	}
@@ -69,14 +74,9 @@ func (o *OutPutter) CreateFile(filename string, appendtoFile bool) (*os.File, er
 
 	var file *os.File
 	var err error
-	if appendtoFile {
-		file, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	} else {
-		file, err = os.Create(filename)
-	}
+	file, err = os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, err
 	}
-
 	return file, nil
 }

@@ -3,8 +3,9 @@ package hackbrowserdata
 import (
 	"bytes"
 	"crypto/sha1"
-	"errors"
 	"os/exec"
+
+	"github.com/pkg/errors"
 
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -20,7 +21,7 @@ func (b webkit) Storage() string {
 		return "Microsoft Edge"
 	case Brave:
 		return "Brave"
-	case Opera:
+	case Opera, OperaGX:
 		return "Opera"
 	case Vivaldi:
 		return "Vivaldi"
@@ -111,7 +112,7 @@ func (b webkit) MasterSecretKey() ([]byte, error) {
 		key := pbkdf2.Key(chromeSecret, chromeSalt, 1003, 16, sha1.New)
 		return key, nil
 	} else {
-		return nil, errors.New(unsupported)
+		return nil, ErrWrongSecurityCommand
 	}
 }
 

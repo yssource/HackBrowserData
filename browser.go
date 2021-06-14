@@ -1,24 +1,23 @@
 package hackbrowserdata
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/moond4rk/hack-browser-data/internal/utils"
 )
 
 type Browser struct {
-	clientList  []Client
-	itemerList  []Itemer
-	name        string
-	storage     string
-	profilePath string
-	keyPath     string
-	outputType  outputType
-	outputDir   string
-	filename    string
+	clients    []Client
+	items      []Itemer
+	outputType outputType
+	outputDir  string
+	compress   bool
+	fileAppend bool
+	silence    bool
 }
 
 type Option func(*Browser) error
@@ -31,30 +30,46 @@ func NewBrowser(options ...Option) (*Browser, error) {
 			return nil, err
 		}
 	}
-	if len(b.clientList) <= 0 {
-		return nil, errors.New("clientlist must be set")
+	if len(b.clients) <= 0 {
+		return nil, errors.New("clients must be set")
 	}
-	if len(b.itemerList) <= 0 {
-		return nil, errors.New("itemerlist must be set")
+	if len(b.items) <= 0 {
+		return nil, errors.New("items must be set")
 	}
 	return b, nil
 }
 
 func (b *Browser) Run() error {
-	outputter := NewOutPutter(b.outputType)
-	for _, client := range b.clientList {
-		for _, itemer := range b.itemerList {
+	output := NewOutPutter(b.outputType)
+
+	err := createDir(b.outputDir)
+	if err != nil {
+		return err
+	}
+	for _, client := range b.clients {
+		for _, itemer := range b.items {
+			fmt.Println(client.Name(), itemer.Name())
 			data, err := client.GetBrowsingData(itemer)
-			// Handle error
+			// Handle error while browser not installed
+			if err != nil {
+				if strings.Contains(err.Error(), "not exist") || strings.Contains(err.Error(), "not support") {
+					fmt.Println(err)
+					continue
+				} else {
+					return err
+				}
+			}
+			filename := strings.ToLower(b.outputDir + "/" + client.Name() + "_" + itemer.Name() + b.outputType.String())
+			f, err := output.CreateFile(filename)
+			err = output.Write(data, f)
 			if err != nil {
 				return err
 			}
-			filename := client.Name() + "_" + itemer.Name() + b.outputType.String()
-			f, err := outputter.CreateFile(filename, true)
-			err = outputter.Write(data, f)
-			if err != nil {
-				return err
-			}
+		}
+	}
+	if b.compress {
+		if err = utils.Compress(b.outputDir); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -63,34 +78,97 @@ func (b *Browser) Run() error {
 // WithClient gets a single browser
 func WithClient(cname string) Option {
 	return func(b *Browser) error {
-		names := NameBrowserMap()
+		names := BrowserMap()
 		if client, ok := names[cname]; ok {
-			b.clientList = append(b.clientList, client)
-		} else{
-			return fmt.Errorf("not support this browser %s", client.Name())
+			b.clients = append(b.clients, client)
+		} else {
+			return fmt.Errorf("not support this browser client: %s", client.Name())
 		}
 		return nil
 	}
 }
 
+func WithOutputJson() Option {
+	return func(b *Browser) error {
+		b.outputType = OutputJson
+		return nil
+	}
+}
+
+func WithOutputCSV() Option {
+	return func(b *Browser) error {
+		b.outputType = OutputCSV
+		return nil
+	}
+}
+
+func WithOutputDir(dir string) Option {
+	return func(b *Browser) error {
+		b.outputDir = dir
+		return nil
+	}
+}
+
+func WithFileAppend(append bool) Option {
+	return func(b *Browser) error {
+		b.fileAppend = append
+		return nil
+	}
+
+}
+
 // WithAllClients is a option to add all browser clients
 func WithAllClients() Option {
 	return func(b *Browser) error {
-		b.clientList = getAllClients()
+		b.clients = getAllClients()
+		return nil
+	}
+}
+
+func WithItemer(itemname string) Option {
+	return func(b *Browser) error {
+		names := ItemerMap()
+		if itemer, ok := names[itemname]; ok {
+			b.items = append(b.items, itemer)
+		} else {
+			return fmt.Errorf("not support this itemer: %s", itemer.Name())
+		}
+		return nil
+	}
+}
+
+func WithAllItemers() Option {
+	return func(b *Browser) error {
+		b.items = getAllItemer()
+		return nil
+	}
+}
+
+func WithCompress(compress bool) Option {
+	return func(b *Browser) error {
+		b.compress = compress
 		return nil
 	}
 }
 
 // ListAllBrowserName get all browsers supported by this OS
 func ListAllBrowserName() (names []string) {
-	list := getAllClients()
-	for _, v := range list {
+	clients := getAllClients()
+	for _, v := range clients {
 		names = append(names, strings.ToLower(v.Name()))
 	}
 	return names
 }
 
-func NameBrowserMap() map[string]Client {
+func ListAllItemerName() (names []string) {
+	itmes := getAllItemer()
+	for _, v := range itmes {
+		names = append(names, strings.ToLower(v.Name()))
+	}
+	return names
+}
+
+func BrowserMap() map[string]Client {
 	var names = make(map[string]Client)
 	clients := getAllClients()
 	for i, name := range ListAllBrowserName() {
@@ -99,20 +177,36 @@ func NameBrowserMap() map[string]Client {
 	return names
 }
 
+func ItemerMap() map[string]Itemer {
+	var names = make(map[string]Itemer)
+	items := getAllItemer()
+	for i, name := range ListAllItemerName() {
+		names[name] = items[i]
+	}
+	return names
+}
+
 // getAllClients using the profile path is exist to get all browser are supported by this OS
 func getAllClients() []Client {
-	var clientList []Client
+	var clients []Client
 	for i := 0; i <= int(Vivaldi); i++ {
 		if webkit(i).ProfilePath() != unsupported {
-			clientList = append(clientList, webkit(i))
+			clients = append(clients, webkit(i))
 		}
 	}
 	for i := 0; i <= int(FirefoxESR); i++ {
 		if gecko(i).ProfilePath() != unsupported {
-			clientList = append(clientList, gecko(i))
+			clients = append(clients, gecko(i))
 		}
 	}
-	return clientList
+	return clients
+}
+
+func createDir(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.Mkdir(dir, 0700)
+	}
+	return nil
 }
 
 type (
@@ -218,7 +312,7 @@ func (b webkit) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 	}
 	err = utils.CopyFileToLocal(b.ProfilePath(), itemer.FileName(Chrome))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "browser: %s maybe not exist", b.Name())
 	}
 	data := itemer.Data(b)
 	err = data.parse(itemer, masterKey)
@@ -238,13 +332,16 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 		err       error
 	)
 	// firefox password need key4.db
+	if itemer.FileName(b) == unsupportedItem {
+		return nil, fmt.Errorf("browser %s not support export %s", b.Name(), itemer.Name())
+	}
 	if itemer == Password {
 		paths := strings.Split(itemer.FileName(b), "|")
 		if err := utils.CopyFileToLocal(b.ProfilePath(), paths[0]); err != nil {
-			fmt.Println(err)
+			return nil, errors.Wrapf(err, "browser: %s maybe not exist", b.Name())
 		}
 		if err := utils.CopyFileToLocal(b.ProfilePath(), paths[1]); err != nil {
-			fmt.Println(err)
+			return nil, errors.Wrapf(err, "browser: %s maybe not exist", b.Name())
 		}
 		data := itemer.Data(b)
 		err = data.parse(itemer, masterKey)
@@ -259,7 +356,7 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 		return data, nil
 	} else {
 		if err := utils.CopyFileToLocal(b.ProfilePath(), itemer.FileName(b)); err != nil {
-			fmt.Println(err)
+			return nil, errors.Wrapf(err, "browser: %s maybe not exist", b.Name())
 		}
 		data := itemer.Data(b)
 		err = data.parse(itemer, masterKey)
@@ -275,6 +372,6 @@ func (b gecko) GetBrowsingData(itemer Itemer) (BrowsingData, error) {
 }
 
 var (
-	ErrWrongSecurityCommand = errors.New("wrong security command")
+	ErrWrongSecurityCommand = errors.New("macOS wrong security command")
 	errDbusSecretIsEmpty    = errors.New("dbus secret key is empty")
 )
